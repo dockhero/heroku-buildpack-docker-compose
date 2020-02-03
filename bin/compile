@@ -8,7 +8,7 @@ VENDOR_DIR=$BUILD_DIR/vendor
 mkdir -p $CACHE_DIR $VENDOR_DIR
 
 DOCKER_VERSION=`curl -s https://download.docker.com/linux/static/stable/x86_64/ | grep "\-ce" | grep -oP "[0-9]+\.[0-9]+\.[0-9]" | tail -n 1`
-COMPOSE_VERSION=`git ls-remote https://github.com/docker/compose | grep refs/tags | grep -oP "[0-9]+\.[0-9][0-9]+\.[0-9]+$" | tail -n 1`
+COMPOSE_VERSION=`git ls-remote https://github.com/docker/compose | grep -oP 'refs/tags/[0-9]+\.[0-9][0-9]+\.[0-9]+$' | cut -c 11- | tail -n 1`
 
 LOCAL_DOCKER_TGZ=$CACHE_DIR/docker-$DOCKER_VERSION.tgz
 LOCAL_COMPOSE=$CACHE_DIR/docker-compose-$COMPOSE_VERSION
