@@ -4,26 +4,47 @@ BUILD_DIR=$1
 CACHE_DIR=$2
 ENV_DIR=$3
 VENDOR_DIR=$BUILD_DIR/vendor
+PLUGINS_DIR=$BUILD_DIR/.docker/cli-plugins
 
-mkdir -p $CACHE_DIR $VENDOR_DIR
+echo
+echo "-----> HOME        => $HOME"
+echo "-----> BUILD_DIR   => $BUILD_DIR"
+echo "-----> CACHE_DIR   => $CACHE_DIR"
+echo "-----> VENDOR_DIR  => $VENDOR_DIR"
+echo "-----> PLUGINS_DIR => $PLUGINS_DIR"
 
-DOCKER_VERSION=`curl -s https://download.docker.com/linux/static/stable/x86_64/ | grep "\-ce" | grep -oP "[0-9]+\.[0-9]+\.[0-9]" | tail -n 1`
-COMPOSE_VERSION=`git ls-remote https://github.com/docker/compose | grep refs/tags | grep -oP "[0-9]+\.[0-9][0-9]+\.[0-9]+$" | tail -n 1`
+mkdir -p $CACHE_DIR $VENDOR_DIR $PLUGINS_DIR
+
+DOCKER_VERSION=`curl -s https://download.docker.com/linux/static/stable/x86_64/ | grep -v "rootless" | grep -oP "[0-9]+\.[0-9]+\.[0-9]" | tail -n 1`
+COMPOSE_VERSION=`git ls-remote https://github.com/docker/compose | grep refs/tags | grep -oP "v2\.[0-9]+\.[0-9]+$" | tail -n 1`
+
+# DOCKER_VERSION=20.10.8
+# COMPOSE_VERSION=v2.0.1
+
+OS=`uname -s`
+ARCH=`uname -m`
+DOCKER_URL=https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz
+COMPOSE_URL=https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-${OS}-${ARCH}
 
 LOCAL_DOCKER_TGZ=$CACHE_DIR/docker-$DOCKER_VERSION.tgz
 LOCAL_COMPOSE=$CACHE_DIR/docker-compose-$COMPOSE_VERSION
 
-echo "-----> Using docker CLI $DOCKER_VERSION"
-[ -e $LOCAL_DOCKER_TGZ ] || curl -s https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}-ce.tgz -o $LOCAL_DOCKER_TGZ
+echo "-----> Downloading docker CLI $DOCKER_VERSION from $DOCKER_URL"
+[ -e $LOCAL_DOCKER_TGZ ] || curl -s $DOCKER_URL -o $LOCAL_DOCKER_TGZ
 
-echo "-----> Using docker-compose $COMPOSE_VERSION"
-[ -e $LOCAL_COMPOSE ] || curl -s -L https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > $LOCAL_COMPOSE
+echo "-----> Downloading docker-compose $COMPOSE_VERSION from $COMPOSE_URL"
+[ -e $LOCAL_COMPOSE ] || curl -s -L $COMPOSE_URL -o $LOCAL_COMPOSE
 
-echo "-----> Installing binaries under /app/vendor"
-tar -zxf $LOCAL_DOCKER_TGZ -C $VENDOR_DIR docker/docker
-cp $LOCAL_COMPOSE $VENDOR_DIR/docker/docker-compose
-chmod 755 $VENDOR_DIR/docker/*
+echo "-----> Installing docker under /app/vendor"
+tar -zxf $LOCAL_DOCKER_TGZ -C $VENDOR_DIR docker/docker && \
+    chmod 755 $VENDOR_DIR/docker/docker
+
+echo "-----> Installing docker-compose under $HOME/.docker/cli-plugins"
+cp $LOCAL_COMPOSE $PLUGINS_DIR/docker-compose && \
+    chmod 755 $PLUGINS_DIR/docker-compose
 
 echo "-----> Writing .profile.d script"
-mkdir -p $BUILD_DIR/.profile.d
-echo 'export PATH=$PATH:/app/vendor/docker' > $BUILD_DIR/.profile.d/heroku-buildpack-docker-compose.sh
+mkdir -p $BUILD_DIR/.profile.d && \
+    echo 'export PATH=$PATH:/app/vendor/docker' > $BUILD_DIR/.profile.d/heroku-buildpack-docker-compose.sh
+
+echo
